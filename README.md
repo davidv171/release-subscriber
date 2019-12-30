@@ -1,2 +1,2 @@
 # release-subscriber
-Subscribe to a project's releases
+Subscribe to a project's releases.

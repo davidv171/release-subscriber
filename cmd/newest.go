@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/davidv171/release-subscriber/utils"
@@ -13,7 +14,7 @@ import (
 /* return 888 if download fails after finding the repo */
 /**/
 /**/
-func GetNewestRelease(owner, repo, destination string) int {
+func GetNewestRelease(owner, repo, destination string) error {
 
 	ctx, client := utils.GetClient()
 
@@ -21,27 +22,33 @@ func GetNewestRelease(owner, repo, destination string) int {
 	fmt.Println("Printing releases...")
 	if err != nil {
 		fmt.Println("Error getting it ", err.Error())
-		return 999
+		return err
 	}
 	fmt.Println("Asset release "+release.GetAssetsURL(), response.StatusCode)
 	if release.TarballURL != nil {
-		//TODO: Change from defaulting to tarball
-		url := release.TarballURL
-		fmt.Println("Download URL found:  ", *url)
-
-		filename := createReleaseFileName(release, repo)
-
-		succ := utils.Download(url, destination+filename)
-
+		err := tarball(release, repo, destination)
 		//Download failed
-		if succ != 0 {
-			fmt.Println("Could not download", err)
-			return 888
+		if err != nil {
+			return err
 		}
 	}
 	//For unit test, author needs to be the same
-	return response.StatusCode
+	return err
 
+}
+
+func tarball(release *github.RepositoryRelease, repo string, destination string) error {
+	//TODO: Change from defaulting to tarball
+	url := release.TarballURL
+	if url == nil {
+		return errors.New("The URL is null for repo: " + repo)
+	}
+	fmt.Println("Download URL found:  ", *url)
+
+	filename := createReleaseFileName(release, repo)
+
+	err := utils.Download(*url, destination+filename)
+	return err
 }
 
 func createReleaseFileName(release *github.RepositoryRelease, repo string) string {

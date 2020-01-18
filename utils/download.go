@@ -1,37 +1,45 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 )
 
-/* Download downloads a file into destination by *url */
-func Download(url *string, dst string) int {
+type ResponseError struct {
+	Code int
+	Url  string
+}
 
-	fmt.Println("Downloading ", *url, " to ", dst)
-	resp, err := http.Get(*url)
+func (e ResponseError) Error() string {
+	return "Non-200 return code from HTTP while downloading: " + e.Url + " " +  strconv.Itoa(e.Code)
+}
+
+/* Download downloads a file into destination by *url */
+func Download(url string, dst string) error {
+
+	fmt.Println("Downloading ", url, " to ", dst)
+	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println("Error while downloading ", err)
-		return 1
+		return errors.New("Error while downloading")
 	}
 
 	if resp.StatusCode != 200 {
-		fmt.Println("Non-zero return code from HTTP while downloading ", url)
-		return 1
+		return ResponseError{resp.StatusCode, url}
 	}
+
 	out, err := os.Create(dst)
 	if err != nil {
-		fmt.Println("Couldn't create file")
-		return 1
+		return fmt.Errorf("Couldn't create file: %v", err)
 	}
 	defer out.Close()
 	_, err = io.Copy(out, resp.Body)
 
 	if err != nil {
-		fmt.Println("Could not copy file...")
-		return 1
+		return fmt.Errorf("Could not copy file: %v", err)
 	}
-	return 0
+	return nil
 }
